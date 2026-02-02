@@ -1,1 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AW Racers</title>
+<style>
+body{margin:0;background:black;color:white;font-family:Arial}
+#ui{position:absolute;top:10px;left:10px;z-index:10}
+canvas{display:block;margin:auto;background:#222}
+</style>
+</head>
+<body>
+<div id="ui">
+AW RACERS | Speed: <span id="speed">0</span><br>
+Level: <span id="level">1</span><br>
+Mode:
+<select id="modeSelect">
+<option value="levels">30 Levels</option>
+<option value="open">Open World</option>
+</select><br>
+Car:
+<select id="carSelect">
+<option value="ferrari">Ferrari</option>
+<option value="lamborghini">Lamborghini</option>
+<option value="corolla">Corolla</option>
+<option value="landcruiser">Land Cruiser</option>
+</select>
+</div>
+<canvas id="game" width="500" height="600"></canvas>
+<script>
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+const speedText=document.getElementById('speed');
+const levelText=document.getElementById('level');
 
+let road={x:80,w:340};
+let car={x:230,y:480,w:40,h:80,speed:4,type:'ferrari'};
+let enemies=[];
+let score=0;
+let level=1;
+let mode='levels';
+let gameOver=false;
+let boost=100,boosting=false;
+
+function carColor(){
+ if(car.type==='ferrari')return'#c40000';
+ if(car.type==='lamborghini')return'#ff9800';
+ if(car.type==='corolla')return'#b0b0b0';
+ return'#2e7d32';
+}
+
+function drawRoad(){
+ ctx.fillStyle='#444';
+ ctx.fillRect(road.x,0,road.w,canvas.height);
+ ctx.strokeStyle='white';
+ ctx.setLineDash([20,20]);
+ ctx.beginPath();
+ ctx.moveTo(250,0);
+ ctx.lineTo(250,600);
+ ctx.stroke();
+ ctx.setLineDash([]);
+}
+
+function drawCar(){
+ ctx.fillStyle=carColor();
+ ctx.fillRect(car.x,car.y,car.w,car.h);
+ ctx.fillStyle='black';
+ ctx.fillRect(car.x+6,car.y+15,car.w-12,18);
+}
+
+function spawnEnemy(){
+ let rate=mode==='open'?0.03:0.015+level*0.002;
+ if(Math.random()<rate){
+  let lane=Math.random()>0.5?road.x+60:road.x+road.w-100;
+  enemies.push({x:lane,y:-100,w:40,h:80,dir:Math.random()>0.5?1:-1});
+ }
+}
+
+function drawEnemies(){
+ ctx.fillStyle='yellow';
+ enemies.forEach(e=>{
+  e.y+=car.speed*(e.dir===1?1:-0.6);
+  ctx.fillRect(e.x,e.y,e.w,e.h);
+  if(e.y>canvas.height||e.y<-120)score++;
+  if(e.x<car.x+car.w&&e.x+e.w>car.x&&e.y<car.y+car.h&&e.y+e.h>car.y){
+   gameOver=true;
+  }
+ });
+ enemies=enemies.filter(e=>e.y<canvas.height+120&&e.y>-140);
+}
+
+function update(){
+ if(gameOver){
+  ctx.fillStyle='white';
+  ctx.font='28px Arial';
+  ctx.fillText('GAME OVER',150,260);
+  ctx.font='16px Arial';
+  ctx.fillText('Press R to Retry',170,300);
+  return;
+ }
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ drawRoad();
+ drawCar();
+ spawnEnemy();
+ drawEnemies();
+ if(boosting&&boost>0){car.speed+=0.05;boost-=0.6}
+ if(!boosting&&boost<100)boost+=0.3;
+ if(mode==='levels'&&score>0&&score%10===0&&level<30){level++;car.speed+=0.4;levelText.textContent=level}
+ speedText.textContent=car.speed.toFixed(1);
+ requestAnimationFrame(update);
+}
+
+window.addEventListener('keydown',e=>{
+ if(e.key==='ArrowLeft'&&car.x>road.x+10)car.x-=20;
+ if(e.key==='ArrowRight'&&car.x<road.x+road.w-car.w-10)car.x+=20;
+ if(e.key===' ')boosting=true;
+ if(e.key.toLowerCase()==='r'&&gameOver)location.reload();
+});
+window.addEventListener('keyup',e=>{if(e.key===' ')boosting=false});
+
+document.getElementById('carSelect').onchange=e=>car.type=e.target.value;
+document.getElementById('modeSelect').onchange=e=>{mode=e.target.value;score=0;level=1;car.speed=4;levelText.textContent=1};
+
+update();
+</script>
+</body>
+</html>
